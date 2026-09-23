@@ -92,7 +92,7 @@ h2{font-family:var(--display);font-weight:600;font-size:1.55rem;line-height:1.05
 textarea{width:100%;margin-top:12px;border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:8px 10px;min-height:42px;resize:vertical}
 .last{font-size:.85rem;color:var(--muted);margin:8px 0 0}
 .hint{font-size:.8rem;color:var(--muted)}
-.add-row{display:flex;gap:8px;align-items:center;margin-top:6px}
+.add-row{display:flex;gap:8px;align-items:center;margin:0 0 14px}
 .add-row select{flex:1;border:1px dashed var(--line);background:transparent;border-radius:10px;padding:10px}
 .rest-day{text-align:center;padding:26px 16px}
 .stats{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:10px;margin:14px 0 18px}
@@ -443,9 +443,12 @@ function ensureItem(date, fam){
   if(!s.items[fam]) s.items[fam]={level:S.profile.current[fam]||0,sets:[],note:""};
   return s.items[fam];
 }
-function cleanSession(date){
+function cleanSession(date, strict){
   const s=S.drafts[date]; if(!s) return;
-  for(const [k,it] of Object.entries(s.items)) if(!it.sets.length && !it.note) delete s.items[k];
+  for(const [k,it] of Object.entries(s.items)){
+    if(it.sets.length || it.note) continue;
+    if(strict || (!it.added && it.level===(S.profile.current[k]||0))) delete s.items[k];
+  }
   const logged=S.sessions[date];
   if(logged ? JSON.stringify(s)===JSON.stringify(logged) : !Object.keys(s.items).length) delete S.drafts[date];
 }
@@ -507,7 +510,9 @@ function vToday(){
   const planned = SCHEDULE[dow];
   const s = shown(date);
   const logged = s ? Object.keys(s.items) : [];
-  const fams = [...new Set([...planned, ...logged])].sort((a,b)=>FAMILIES.findIndex(f=>f.id===a)-FAMILIES.findIndex(f=>f.id===b));
+  const order = f => FAMILIES.findIndex(x=>x.id===f);
+  const addedAt = f => (s && s.items[f] && s.items[f].added) || 0;
+  const fams = [...new Set([...planned, ...logged])].sort((a,b)=> (addedAt(b)-addedAt(a)) || (order(a)-order(b)));
   const isToday = date===today();
   const title = isToday ? "Today" : nice(date);
   const plan = planned.length ? planned.map(f=>FAM[f].name).join(" and ") : "Rest and stretching";
@@ -517,11 +522,11 @@ function vToday(){
     ${isToday?"":`<button class="pill" data-action="goto-today">Today</button>`}
     <button class="arrow" data-action="day" data-d="1" aria-label="Next day" ${date>=today()?"disabled style='opacity:.35'":""}>›</button>
   </div>`;
-  if(!fams.length) html += `<div class="card rest-day"><h2>Rest day</h2><p class="sub">The Hybrid Routine keeps this day for rest and stretching. Doing something anyway? Add it below.</p></div>`;
-  html += fams.map(f=>card(f,date)).join("");
   const others = FAMILIES.filter(f=>!fams.includes(f.id));
-  html += logBar(date);
   if(others.length) html += `<div class="add-row"><select data-action="add-fam" aria-label="Add another exercise"><option value="">Add another exercise…</option>${others.map(f=>`<option value="${f.id}">${f.name}</option>`).join("")}</select></div>`;
+  if(!fams.length) html += `<div class="card rest-day"><h2>Rest day</h2><p class="sub">The Hybrid Routine keeps this day for rest and stretching. Doing something anyway? Add it above.</p></div>`;
+  html += fams.map(f=>card(f,date)).join("");
+  html += `<div id="logslot">${logBar(date)}</div>`;
   return html;
 }
 
@@ -557,8 +562,8 @@ function card(fam,date){
     const nx = F.levels[cur+1];
     lu = nx ? `<div class="levelup"><p>Standard hit on ${esc(L.n)}. Next up: <b>${esc(nx.n)}</b> (${stdText(nx)}).</p><button class="btn done" data-action="levelup" data-fam="${fam}">Move up</button></div>`
             : `<div class="levelup"><p>Standard hit on the last step of the ladder. Keep it sharp.</p></div>`;
-  } else if(it.level<cur){
-    lu = `<p class="hint" style="margin-top:8px">Logging an easier step than your current one (${esc(F.levels[cur].n)}).</p>`;
+  } else if(it.level!==cur){
+    lu = `<div class="levelup" style="background:var(--bg)"><p class="hint" style="margin:0">Your current step is ${esc(F.levels[cur].n)}.</p><button class="btn ghost" data-action="make-cur" data-fam="${fam}" data-i="${it.level}">Make ${esc(L.n)} my current step</button></div>`;
   }
   const sets = it.sets.map((x,i)=>`<li class="set ${Number(x.v)>=L.r?"hit":""}">
       <span class="n">Set ${i+1}</span>
@@ -761,11 +766,7 @@ function toast(msg){ const t=document.getElementById("toast"); t.textContent=msg
 
 /* ---------- Events ---------- */
 function refreshLogBar(){
-  if(S.view!=="today") return;
-  const html=logBar(S.date), el=document.querySelector("#app .logbar, #app .logged");
-  const make=()=>{ const t=document.createElement("div"); t.innerHTML=html; return t.firstElementChild; };
-  if(el){ html ? el.replaceWith(make()) : el.remove(); }
-  else if(html){ const add=document.querySelector("#app .add-row"); add ? add.before(make()) : document.getElementById("app").appendChild(make()); }
+  const slot=document.getElementById("logslot"); if(slot) slot.innerHTML=logBar(S.date);
 }
 function rerenderCard(fam){
   const el=document.querySelector(`section.card[data-fam="${fam}"]`);
@@ -802,7 +803,8 @@ document.addEventListener("click", async e=>{
     }
     case "log-session": {
       const date=S.date; if(!S.drafts[date]) return;
-      cleanSession(date);
+      cleanSession(date, true);
+      if(S.drafts[date]) Object.values(S.drafts[date].items).forEach(it=>delete it.added);
       const draft=S.drafts[date];
       if(draft){ if(setCount(draft)) S.sessions[date]=draft; else delete S.sessions[date]; delete S.drafts[date]; }
       stopRest(); S.composer={};
@@ -813,6 +815,7 @@ document.addEventListener("click", async e=>{
     }
     case "rm-fam": { const s=getDraft(S.date); delete s.items[fam]; cleanSession(S.date); Store.saveDraft(); render(); break; }
     case "levelup": { const n=S.profile.current[fam]+1; if(n<FAM[fam].levels.length){ S.profile.current[fam]=n; Store.saveProfile(); toast(`Moved up to ${FAM[fam].levels[n].n}. Starts next session.`); rerenderCard(fam);} break; }
+    case "make-cur": S.profile.current[fam]=Number(b.dataset.i); Store.saveProfile(); rerenderCard(fam); toast(`${FAM[fam].levels[S.profile.current[fam]].n} is now your current step.`); break;
     case "set-cur": S.profile.current[fam]=Number(b.dataset.i); Store.saveProfile(); render(); break;
     case "rest": S.profile.restSec=Number(b.dataset.s); Store.saveProfile(); render(); break;
     case "restday": { const d=Number(b.dataset.d); const r=S.profile.restDays; S.profile.restDays = r.includes(d)? r.filter(x=>x!==d) : [...r,d]; Store.saveProfile(); render(); break; }
@@ -858,7 +861,7 @@ document.addEventListener("input", e=>{
 document.addEventListener("change", e=>{
   const el=e.target, a=el.dataset.action, fam=el.dataset.fam; if(!a) return;
   if(a==="level"){ const it=ensureItem(S.date,fam); it.level=Number(el.value); S.composer[fam]={f:1}; cleanSession(S.date); Store.saveDraft(); rerenderCard(fam); refreshLogBar(); }
-  if(a==="add-fam" && el.value){ ensureItem(S.date,el.value); render(); }
+  if(a==="add-fam" && el.value){ const it=ensureItem(S.date,el.value); it.added=Date.now(); Store.saveDraft(); render(); }
   if(a==="set-v"){ rerenderCard(fam); }
 });
 // keep "today" correct if the app stays open past midnight
