@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hybrid Log</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Hybrid Log">
+<meta name="theme-color" content="#1C2A33">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%AA%9C%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EEF0EC; --surface:#FAFBF8; --ink:#1C2A33; --muted:#5E6C73; --line:#D5DAD4;
+  --accent:#B9771E; --accent-ink:#FFFFFF; --done:#2E7A72; --done-soft:#BFDCD7; --warn:#A5402F;
+  --rung:#CCD2CB;
+  --display:"Barlow Condensed","Arial Narrow","Roboto Condensed",sans-serif;
+  --body:"Barlow","Segoe UI",system-ui,-apple-system,sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#141A1E; --surface:#1C2429; --ink:#E4E9EA; --muted:#98A5AB; --line:#2E3A40;
+    --accent:#E2A548; --accent-ink:#1A1206; --done:#4DB0A5; --done-soft:#24433F; --warn:#E07A66; --rung:#34424A;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#141A1E; --surface:#1C2429; --ink:#E4E9EA; --muted:#98A5AB; --line:#2E3A40;
+  --accent:#E2A548; --accent-ink:#1A1206; --done:#4DB0A5; --done-soft:#24433F; --warn:#E07A66; --rung:#34424A;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;-webkit-text-size-adjust:100%}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+main{max-width:680px;margin:0 auto;padding:16px 16px 150px}
+.top{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:4px 0 14px}
+.brand{font-family:var(--display);font-weight:700;font-size:1.35rem;letter-spacing:.01em}
+.sync{font-size:.8rem;color:var(--muted);border:0;background:none;padding:4px 0}
+.sync[data-state="error"],.sync[data-state="offline"]{color:var(--warn)}
+.gh input{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px 10px;margin-bottom:8px}
+.gh .row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+h1{font-family:var(--display);font-weight:700;font-size:2.4rem;line-height:1;margin:0}
+h2{font-family:var(--display);font-weight:600;font-size:1.55rem;line-height:1.05;margin:0}
+.sub{color:var(--muted);margin:4px 0 0}
+.datebar{display:flex;align-items:center;gap:8px;margin-bottom:18px}
+.datebar .arrow{border:1px solid var(--line);background:var(--surface);border-radius:50%;width:38px;height:38px;font-size:1.2rem;line-height:1;flex:none}
+.datebar .grow{flex:1;min-width:0}
+.pill{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:.9rem}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+.card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.ladder{display:flex;gap:3px;margin:12px 0 10px;align-items:flex-end;height:26px}
+.ladder span{flex:1;background:var(--rung);border-radius:2px;height:8px}
+.ladder span.past{background:var(--done)}
+.ladder span.now{background:var(--accent);height:26px}
+.prog{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.prog select{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:6px 8px;max-width:100%}
+.std{font-family:var(--display);font-size:1.15rem;font-weight:600}
+.std small{font-family:var(--body);font-weight:400;font-size:.8rem;color:var(--muted)}
+.levelup{margin-top:12px;background:var(--done-soft);border-radius:10px;padding:10px 12px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.levelup p{margin:0;font-size:.95rem}
+.btn{border:0;border-radius:10px;padding:10px 14px;font-weight:600;background:var(--ink);color:var(--surface)}
+.btn.accent{background:var(--accent);color:var(--accent-ink)}
+.btn.done{background:var(--done);color:#fff}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink);font-weight:500}
+.sets{list-style:none;padding:0;margin:14px 0 0}
+.set{display:grid;grid-template-columns:44px 84px 1fr 34px;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--line)}
+.set .n{font-family:var(--display);color:var(--muted);font-size:1.05rem}
+.set input{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:6px 8px;font-family:var(--display);font-size:1.3rem;font-weight:600;text-align:center}
+.set .x{border:0;background:none;color:var(--muted);font-size:1.2rem;padding:4px}
+.set.hit input{border-color:var(--done);color:var(--done)}
+.feel{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.feel button{border:0;background:transparent;padding:6px 9px;font-size:.85rem;color:var(--muted)}
+.feel button+button{border-left:1px solid var(--line)}
+.feel button[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+.composer{margin-top:12px;display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center}
+.composer .num{display:flex;align-items:center;gap:6px}
+.composer .step{width:40px;height:44px;border:1px solid var(--line);background:var(--bg);border-radius:10px;font-size:1.3rem}
+.composer input{width:72px;height:44px;border:1px solid var(--line);background:var(--bg);border-radius:10px;text-align:center;font-family:var(--display);font-size:1.6rem;font-weight:700}
+.composer .feel{justify-self:center}
+.composer .btn{height:44px}
+@media (max-width:460px){
+  .composer{grid-template-columns:1fr auto}
+  .composer .feel{grid-column:1 / -1;grid-row:2;justify-self:stretch;display:grid;grid-template-columns:repeat(3,1fr)}
+}
+textarea{width:100%;margin-top:12px;border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:8px 10px;min-height:42px;resize:vertical}
+.last{font-size:.85rem;color:var(--muted);margin:8px 0 0}
+.hint{font-size:.8rem;color:var(--muted)}
+.add-row{display:flex;gap:8px;align-items:center;margin-top:6px}
+.add-row select{flex:1;border:1px dashed var(--line);background:transparent;border-radius:10px;padding:10px}
+.rest-day{text-align:center;padding:26px 16px}
+.stats{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:10px;margin:14px 0 18px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px}
+.stat b{display:block;font-family:var(--display);font-size:2rem;line-height:1;font-weight:700}
+.stat.big b{font-size:3.4rem;color:var(--accent)}
+.stat span{font-size:.82rem;color:var(--muted)}
+.cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.cal .dow{font-size:.75rem;color:var(--muted);text-align:center;padding-bottom:2px}
+.cal button{aspect-ratio:1;border:1px solid transparent;border-radius:9px;background:var(--surface);font-family:var(--display);font-size:1.05rem;font-weight:600;color:var(--muted);padding:0;position:relative}
+.cal button.done{background:var(--done);color:#fff}
+.cal button.done2{background:var(--done);color:#fff;box-shadow:inset 0 0 0 3px var(--accent)}
+.cal button.rest{background:repeating-linear-gradient(135deg,var(--surface) 0 5px,var(--bg) 5px 9px)}
+.cal button.today{border-color:var(--ink)}
+.cal button.future{opacity:.45}
+.cal .blank{visibility:hidden}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.8rem;color:var(--muted);margin-top:10px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin-right:4px}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin:12px 0}
+.chips button{flex:none;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 13px}
+.chips button[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.chart-wrap{overflow-x:auto}
+.chart{width:100%;min-width:320px;height:auto;display:block}
+.chart text{font-family:var(--body);font-size:11px;fill:var(--muted)}
+.meter{height:8px;background:var(--rung);border-radius:4px;overflow:hidden;margin:6px 0 2px}
+.meter i{display:block;height:100%;background:var(--accent)}
+.hist{list-style:none;margin:0;padding:0}
+.hist li{padding:10px 0;border-top:1px solid var(--line);display:grid;grid-template-columns:78px 1fr;gap:10px}
+.hist .d{font-family:var(--display);font-weight:600}
+.hist .reps{font-family:var(--display);font-size:1.2rem;font-weight:600}
+.hist .note{font-size:.88rem;color:var(--muted);margin-top:2px}
+.lv{list-style:none;margin:10px 0 0;padding:0}
+.lv li{display:grid;grid-template-columns:22px 1fr auto;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.lv .dot{width:14px;height:14px;border-radius:50%;background:var(--rung);justify-self:center}
+.lv li.past .dot{background:var(--done)}
+.lv li.now .dot{background:var(--accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 30%,transparent)}
+.lv li.now .nm{font-weight:600}
+.lv .sd{font-family:var(--display);font-size:1.05rem;color:var(--muted)}
+.lv button{border:0;background:none;color:var(--muted);font-size:.8rem;text-decoration:underline;padding:4px}
+.badge{display:inline-block;background:var(--done-soft);color:var(--ink);border-radius:999px;font-size:.78rem;padding:2px 9px;margin-left:6px;vertical-align:3px;font-family:var(--body)}
+.toggles{display:flex;gap:6px;flex-wrap:wrap}
+.toggles button{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 10px;min-width:44px}
+.toggles button[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+.field{margin:12px 0}
+.field label{display:block;font-weight:600;margin-bottom:6px}
+a{color:var(--ink)}
+nav.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);z-index:20}
+nav.tabs .in{max-width:680px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
+nav.tabs button{border:0;background:none;padding:10px 4px 12px;font-size:.85rem;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:3px}
+nav.tabs button svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8}
+nav.tabs button[aria-current="page"]{color:var(--ink);font-weight:600}
+nav.tabs button[aria-current="page"] svg{stroke:var(--accent)}
+.timer{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(70px + env(safe-area-inset-bottom,0px));width:min(648px,calc(100% - 24px));background:var(--ink);color:var(--surface);border-radius:14px;padding:10px 12px 10px 16px;display:none;align-items:center;gap:12px;z-index:25}
+.timer.on{display:flex}
+.timer .t{font-family:var(--display);font-size:2rem;font-weight:700;line-height:1;min-width:84px;font-variant-numeric:tabular-nums}
+.timer .lbl{flex:1;font-size:.85rem;opacity:.8}
+.timer button{border:1px solid color-mix(in srgb,var(--surface) 35%,transparent);background:transparent;color:var(--surface);border-radius:8px;padding:6px 10px}
+.timer.over{background:var(--done)}
+.bar{position:absolute;left:0;bottom:0;height:3px;background:var(--accent);border-radius:0 0 0 14px}
+.logbar{background:var(--surface);border:2px solid var(--done);border-radius:14px;padding:14px 16px;margin:4px 0 14px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.logbar .btn[disabled]{opacity:.4}
+.logged{color:var(--done);font-weight:600;margin:0 0 14px}
+.cal button.draft{border:2px dashed var(--accent)}
+.empty{color:var(--muted);text-align:center;padding:20px 6px}
+.toast{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:8px 14px;border-radius:10px;font-size:.9rem;z-index:30;display:none}
+@media (prefers-reduced-motion:no-preference){.ladder span.now{transition:height .25s}}
+</style>
+</head>
+<body>
+<main id="app" aria-live="polite"></main>
+<div class="timer" id="timer" role="timer">
+  <span class="t" id="timerT">2:30</span>
+  <span class="lbl" id="timerL">Rest before next set</span>
+  <button data-action="timer-add">+30s</button>
+  <button data-action="timer-skip">Skip</button>
+  <span class="bar" id="timerBar"></span>
+</div>
+<div class="toast" id="toast"></div>
+<input type="file" id="importFile" accept=".csv,text/csv,.json,application/json" hidden>
+<nav class="tabs" aria-label="Sections"><div class="in">
+  <button data-action="view" data-v="today"><svg viewBox="0 0 24 24"><path d="M4 12h3l2-6 4 12 2-6h5"/></svg>Log</button>
+  <button data-action="view" data-v="calendar"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Calendar</button>
+  <button data-action="view" data-v="progress"><svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h16M7 15l4-4 3 3 5-6"/></svg>Progress</button>
+  <button data-action="view" data-v="ladders"><svg viewBox="0 0 24 24"><path d="M8 3v18M16 3v18M8 7h8M8 12h8M8 17h8"/></svg>Ladders</button>
+</div></nav>
+
+<script>
+/* ---------- Routine data (Hampton's Hybrid Calisthenics progressions & standards) ---------- */
+const FAMILIES = [
+ {id:"pushups",name:"Pushups",unit:"reps",page:"https://www.hybridcalisthenics.com/pushups",levels:[
+  ["Wall Pushups",3,50],["Incline Pushups",3,40],["Advanced Incline Pushups",3,35],["Knee Pushups",3,30],["Full Pushups",3,25],["Narrow Pushups",3,20],["Side-Staggered Pushups",2,20,1],["Archer Pushups",2,12,1],["Sliding One-Arm Pushups",2,12,1],["One-Arm Pushups",2,9,1],["Advanced One-Arm Pushups",2,9,1]]},
+ {id:"legraises",name:"Leg raises",unit:"reps",page:"https://www.hybridcalisthenics.com/legraises",levels:[
+  ["Knee Raises",2,30],["Advanced Knee Raises",2,30],["Alternating Leg Raises",2,25],["Full Leg Raises",2,25],["Tuck Plow Raises",2,20],["Plow Raises",2,20],["Hanging Knee Raises",2,15],["Advanced Hanging Knee Raises",2,15],["Hanging Leg Raises",2,25],["Toe to Bars",2,25]]},
+ {id:"pullups",name:"Pullups",unit:"reps",page:"https://www.hybridcalisthenics.com/pullups",levels:[
+  ["Wall Pullups",3,50],["Horizontal Pullups",3,30],["Advanced Horizontal Pullups",3,25],["Jackknife Pullups",3,20],["Full Pullups",3,12],["Narrow Pullups",3,9],["One Hand Pullups",2,9,1],["Advanced One Hand Pullups",2,9,1],["Archer Pullups",2,9,1],["One Arm Pullups",2,6]]},
+ {id:"squats",name:"Squats",unit:"reps",page:"https://www.hybridcalisthenics.com/squats",levels:[
+  ["Jackknife Squats",3,35],["Assisted Squats",3,30],["Half Squats",2,50],["Full Squats",2,30],["Narrow Squats",2,30],["Side Staggered Squats",2,20,1],["Front Staggered Squats",2,15,1],["Assisted One Leg Squats",2,12,1],["One Leg Chair Squats",2,12,1],["One Leg Squats",2,12,1]]},
+ {id:"bridges",name:"Bridges",unit:"reps",page:"https://www.hybridcalisthenics.com/bridges",levels:[
+  ["Glute Bridges",3,50],["Straight Bridges",3,30],["Wall Bridges",3,30],["Incline Bridges",2,25],["Head Bridges",2,25],["Full Bridges",2,15],["Wheel Bridges",2,15],["Tap Bridges",2,30,1],["Wall Walking Bridges",2,10],["Stand to Stand Bridges",2,5]]},
+ {id:"twists",name:"Twist holds",unit:"s",page:"https://www.hybridcalisthenics.com/twists",levels:[
+  ["Straight Leg Twists",3,60,1],["Bent Leg Twists",3,60,1],["Full Twists",3,60,1]]}
+].map(f=>({...f,levels:f.levels.map(([n,s,r,b])=>({n,s,r,b:!!b}))}));
+const FAM = Object.fromEntries(FAMILIES.map(f=>[f.id,f]));
+// Hybrid Routine 2.0 weekly schedule (0 = Sunday)
+const SCHEDULE = {1:["pushups","legraises"],2:["pullups","squats"],3:["bridges","twists"],4:["pushups","legraises"],5:["pullups","squats"],6:["bridges","twists"],0:[]};
+const FEELS = ["Easy","Solid","Hard"];
+const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+/* ---------- Date helpers (local dates as YYYY-MM-DD) ---------- */
+const pad = n => String(n).padStart(2,"0");
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const parse = s => { const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d); };
+const addDays = (s,n) => { const d=parse(s); d.setDate(d.getDate()+n); return ymd(d); };
+const today = () => ymd(new Date());
+const nice = s => { const d=parse(s); return `${DOW[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()].slice(0,3)}`; };
+const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+/* ---------- State ---------- */
+const defaultProfile = () => ({current:Object.fromEntries(FAMILIES.map(f=>[f.id,0])),restSec:150,restDays:[0]});
+const S = {
+  profile: defaultProfile(),
+  sessions: {},          // logged sessions (what goes in the CSV)
+  drafts: {},            // sessions in progress, kept only in this browser until "Log session"
+  view: "today",
+  date: today(),
+  calMonth: today().slice(0,7),
+  progFam: "pushups",
+  composer: {},          // fam -> {v,f}
+  loaded: false
+};
+
+/* ---------- CSV format: one row per set ---------- */
+const CSV_HEAD=["date","exercise","step","variation","set","value","unit","feel","note"];
+const csvCell = v => { v=String(v??""); return /[",\n\r]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; };
+function toCSV(sessions){
+  const rows=[CSV_HEAD.join(",")];
+  for(const date of Object.keys(sessions).sort()){
+    const items=sessions[date].items||{};
+    for(const F of FAMILIES){
+      const it=items[F.id]; if(!it) continue;
+      const L=F.levels[it.level]||F.levels[0], base=[date,F.id,it.level+1,L.n];
+      if(!it.sets.length){ if(it.note) rows.push([...base,"","",F.unit,"",it.note].map(csvCell).join(",")); continue; }
+      it.sets.forEach((x,i)=>rows.push([...base,i+1,x.v,F.unit,FEELS[x.f]??"",i===0?(it.note||""):""].map(csvCell).join(",")));
+    }
+  }
+  return rows.join("\n")+"\n";
+}
+function parseCSV(text){
+  const rows=[]; let row=[],cell="",q=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){cell+='"';i++;} else q=false; } else cell+=c; }
+    else if(c==='"') q=true;
+    else if(c===","){ row.push(cell); cell=""; }
+    else if(c==="\n"||c==="\r"){ if(c==="\r"&&text[i+1]==="\n") i++; row.push(cell); rows.push(row); row=[]; cell=""; }
+    else cell+=c;
+  }
+  if(cell!==""||row.length){ row.push(cell); rows.push(row); }
+  return rows.filter(r=>r.some(c=>c.trim()!==""));
+}
+function fromCSV(text){
+  const rows=parseCSV(text.replace(/^\uFEFF/,"")); if(!rows.length) return {};
+  const head=rows[0].map(h=>h.trim().toLowerCase()), ix=n=>head.indexOf(n), col=(r,n)=>ix(n)>=0?(r[ix(n)]??"").trim():"";
+  if(ix("date")<0||ix("exercise")<0) throw new Error("not a log");
+  const sessions={};
+  for(const r of rows.slice(1)){
+    const date=col(r,"date"), fam=col(r,"exercise");
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!FAM[fam]) continue;
+    const level=Math.min(Math.max((parseInt(col(r,"step"))||1)-1,0),FAM[fam].levels.length-1);
+    const s=sessions[date]||(sessions[date]={date,items:{}});
+    const it=s.items[fam]||(s.items[fam]={level,sets:[],note:""});
+    const note=ix("note")>=0?(r[ix("note")]??""):""; if(note) it.note=it.note?it.note+"\n"+note:note;
+    const v=col(r,"value");
+    if(v!==""){ const f=FEELS.indexOf(col(r,"feel")); it.sets.push({v:Number(v)||0,f:f<0?1:f}); }
+  }
+  return sessions;
+}
+
+/* ---------- GitHub contents API ---------- */
+const b64enc = str => { const b=new TextEncoder().encode(str); let s=""; for(let i=0;i<b.length;i+=0x8000) s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000)); return btoa(s); };
+const b64dec = b64 => { const s=atob(b64.replace(/\s/g,"")); const b=new Uint8Array(s.length); for(let i=0;i<s.length;i++) b[i]=s.charCodeAt(i); return new TextDecoder().decode(b); };
+const GH_KEY="hybridlog:github";
+const GH = {
+  cfg:null,
+  load(){ try{ this.cfg=JSON.parse(localStorage.getItem(GH_KEY)||"null"); }catch(e){ this.cfg=null; } },
+  saveCfg(c){ this.cfg=c; try{ c?localStorage.setItem(GH_KEY,JSON.stringify(c)):localStorage.removeItem(GH_KEY); }catch(e){} },
+  settingsPath(){ const p=this.cfg.path, i=p.lastIndexOf("/"); return (i>=0?p.slice(0,i+1):"")+"hybrid-log-settings.json"; },
+  enc: p => p.split("/").map(encodeURIComponent).join("/"),
+  async api(method,url,body){
+    const r=await fetch("https://api.github.com"+url,{method,cache:"no-store",headers:{Authorization:"Bearer "+this.cfg.token,Accept:"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28",...(body?{"Content-Type":"application/json"}:{})},body:body?JSON.stringify(body):undefined});
+    return r;
+  },
+  async err(r){ let m=""; try{ m=(await r.json()).message; }catch(e){} const e=new Error(m||("HTTP "+r.status)); e.status=r.status; return e; },
+  async getFile(path, ref){
+    const {owner,repo,branch}=this.cfg;
+    const r=await this.api("GET",`/repos/${owner}/${repo}/contents/${this.enc(path)}?ref=${encodeURIComponent(ref||branch)}`);
+    if(r.status===404) return {text:null,sha:null};
+    if(!r.ok) throw await this.err(r);
+    const j=await r.json(); let b64=j.content;
+    if(!b64 && j.sha){ const r2=await this.api("GET",`/repos/${owner}/${repo}/git/blobs/${j.sha}`); if(!r2.ok) throw await this.err(r2); b64=(await r2.json()).content; }
+    return {text:b64dec(b64||""),sha:j.sha};
+  },
+  async head(){
+    const {owner,repo,branch}=this.cfg, g=`/repos/${owner}/${repo}/git`;
+    const r=await this.api("GET",`${g}/ref/heads/${this.enc(branch)}`);
+    if(!r.ok) throw await this.err(r);
+    const sha=(await r.json()).object.sha;
+    const r2=await this.api("GET",`${g}/commits/${sha}`);
+    if(!r2.ok) throw await this.err(r2);
+    return {sha, tree:(await r2.json()).tree.sha};
+  },
+  // all files in ONE commit; returns false if the branch moved meanwhile
+  async commit(head, files, message){
+    const {owner,repo,branch}=this.cfg, g=`/repos/${owner}/${repo}/git`;
+    let r=await this.api("POST",`${g}/trees`,{base_tree:head.tree,tree:files.map(f=>({path:f.path,mode:"100644",type:"blob",content:f.text}))});
+    if(!r.ok) throw await this.err(r);
+    const tree=(await r.json()).sha;
+    r=await this.api("POST",`${g}/commits`,{message,tree,parents:[head.sha]});
+    if(!r.ok) throw await this.err(r);
+    const sha=(await r.json()).sha;
+    r=await this.api("PATCH",`${g}/refs/heads/${this.enc(branch)}`,{sha,force:false});
+    if(r.status===422) return false;
+    if(!r.ok) throw await this.err(r);
+    return true;
+  }
+};
+
+/* ---------- Storage: drafts stay on this device; logged sessions go to GitHub ---------- */
+const LS_KEY = "hybridlog:v1";
+const Store = {
+  pending:new Set(), profilePending:false, rev:0, profRev:0,
+  busy:false, again:false, status:"local", msg:"", lastSync:0, lastPull:0,
+  readLocal(){ try{ const raw=localStorage.getItem(LS_KEY); return raw?JSON.parse(raw):null; }catch(e){ return null; } },
+  writeLocal(){
+    try{ localStorage.setItem(LS_KEY, JSON.stringify({profile:S.profile,sessions:S.sessions,drafts:S.drafts,pending:[...this.pending],profilePending:this.profilePending})); }
+    catch(e){ toast("Couldn’t save on this device. Is private browsing on?"); }
+  },
+  loadProfile(p){ S.profile={...defaultProfile(),...(p||{}),current:{...defaultProfile().current,...((p||{}).current||{})}}; },
+  init(){
+    const local=this.readLocal();
+    if(local){ this.loadProfile(local.profile); S.sessions=local.sessions||{}; S.drafts=local.drafts||{}; (local.pending||[]).forEach(d=>this.pending.add(d)); this.profilePending=!!local.profilePending; }
+    GH.load(); this.status = GH.cfg ? "syncing" : "local";
+    S.loaded=true; render();
+    if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(()=>{});
+    if(GH.cfg) this.pull();
+    window.addEventListener("online",()=>{ if(GH.cfg) this.pull(); });
+    document.addEventListener("visibilitychange",()=>{
+      if(!GH.cfg || document.hidden || this.busy) return;
+      if(this.pending.size) this.flush(); else if(Date.now()-this.lastPull>30000) this.pull();
+    });
+  },
+  // during a session: browser only
+  saveDraft(){ this.writeLocal(); },
+  // "Log session": one commit with the whole session
+  logSession(date){ this.pending.add(date); this.rev++; this.writeLocal(); render(); this.flush(); },
+  // settings ride along with the next commit
+  saveProfile(){ this.profilePending=true; this.profRev++; this.writeLocal(); },
+  mergeRemote(csvText, settingsText){
+    if(csvText!=null){
+      const remote=fromCSV(csvText);
+      for(const d of this.pending){ if(S.sessions[d]) remote[d]=S.sessions[d]; else delete remote[d]; }
+      S.sessions=remote;
+    } else Object.keys(S.sessions).forEach(d=>this.pending.add(d));
+    if(settingsText!=null){ if(!this.profilePending){ try{ this.loadProfile(JSON.parse(settingsText)); }catch(e){} } }
+    else this.profilePending=true;
+  },
+  async pull(){
+    if(!GH.cfg) return;
+    setStatus("syncing");
+    try{
+      const [c,st]=await Promise.all([GH.getFile(GH.cfg.path), GH.getFile(GH.settingsPath())]);
+      this.lastPull=Date.now();
+      this.mergeRemote(c.text, st.text);
+      this.writeLocal();
+      const typing=document.activeElement && document.activeElement.closest && document.activeElement.closest("#app input, #app textarea");
+      if(!typing) render();
+      if(this.pending.size) await this.flush(); else setStatus("ok");
+    }catch(e){ this.fail(e); }
+  },
+  async flush(){
+    if(!GH.cfg || (!this.pending.size && !this.profilePending)) return;
+    if(this.busy){ this.again=true; return; }
+    this.busy=true; setStatus("pending");
+    try{
+      for(let attempt=0; attempt<3; attempt++){
+        const head = await GH.head();
+        const [c,st] = await Promise.all([GH.getFile(GH.cfg.path, head.sha), GH.getFile(GH.settingsPath(), head.sha)]);
+        this.mergeRemote(c.text, st.text);
+        const rev=this.rev, prof=this.profRev, dates=[...this.pending].sort();
+        const files=[];
+        if(dates.length) files.push({path:GH.cfg.path, text:toCSV(S.sessions)});
+        if(this.profilePending) files.push({path:GH.settingsPath(), text:JSON.stringify(S.profile,null,2)+"\n"});
+        if(!files.length) break;
+        const ok = await GH.commit(head, files, commitMessage(dates, this.profilePending));
+        if(!ok) continue;  // someone else committed first: re-read and try again
+        if(this.rev===rev) this.pending.clear(); else this.again=true;
+        if(this.profRev===prof) this.profilePending=false;
+        this.lastSync=Date.now(); this.lastPull=Date.now();
+        break;
+      }
+      this.writeLocal();
+      setStatus(this.pending.size ? "error" : "ok", this.pending.size ? "GitHub kept changing while saving. Tap Sync now to try again." : "");
+      render();
+    }catch(e){ this.fail(e); }
+    finally{ this.busy=false; if(this.again){ this.again=false; this.flush(); } }
+  },
+  fail(e){
+    console.warn(e);
+    if(e instanceof TypeError) setStatus("offline","No connection. Logged sessions are saved here and will go to GitHub when you’re back online.");
+    else if(e.status===401) setStatus("error","GitHub rejected the token. It may have expired: paste a new one in Ladders → Sync with GitHub.");
+    else if(e.status===409 && /empty/i.test(e.message)) setStatus("error","The log repository is empty. Add a README file to it on GitHub, then tap Sync now.");
+    else if(e.status===403||e.status===404) setStatus("error","Can’t write to that repository. Check its name and that the token has Contents: Read and write on it.");
+    else setStatus("error","GitHub sync failed: "+e.message);
+  }
+};
+function commitMessage(dates, withSettings){
+  if(!dates.length) return "Update settings";
+  if(dates.length===1){
+    const s=S.sessions[dates[0]];
+    if(!s) return `Delete session ${dates[0]}`;
+    const parts=FAMILIES.filter(f=>s.items[f.id]&&s.items[f.id].sets.length).map(f=>`${f.name} ${s.items[f.id].sets.length}×`);
+    return `Log session ${dates[0]}: ${parts.join(", ")}` + (withSettings?" (+ settings)":"");
+  }
+  return `Log sessions ${dates.join(", ")}` + (withSettings?" (+ settings)":"");
+}
+function setStatus(st,msg){ Store.status=st; Store.msg=msg||""; setSync(); }
+function setSync(){
+  const el=document.getElementById("sync"); if(!el) return;
+  const ago = t => { const m=Math.round((Date.now()-t)/60000); return m<1?"just now":m<60?`${m} min ago`:"earlier"; };
+  const txt = !GH.cfg ? "Saved on this device" : ({
+    syncing:"Syncing with GitHub…", pending:"Saving session to GitHub…", ok:`Synced ${ago(Store.lastSync||Store.lastPull)}`,
+    offline:"Offline, will sync later", error:"Sync problem, tap for details"
+  })[Store.status] || "";
+  el.textContent=txt; el.dataset.state=Store.status;
+}
+setInterval(()=>{ if(Store.status==="ok") setSync(); },60000);
+
+/* ---------- Domain helpers ---------- */
+const clone = o => JSON.parse(JSON.stringify(o));
+function getDraft(date){
+  if(!S.drafts[date]) S.drafts[date] = S.sessions[date] ? clone(S.sessions[date]) : {date,items:{}};
+  return S.drafts[date];
+}
+function ensureItem(date, fam){
+  const s=getDraft(date);
+  if(!s.items[fam]) s.items[fam]={level:S.profile.current[fam]||0,sets:[],note:""};
+  return s.items[fam];
+}
+function cleanSession(date){
+  const s=S.drafts[date]; if(!s) return;
+  for(const [k,it] of Object.entries(s.items)) if(!it.sets.length && !it.note) delete s.items[k];
+  const logged=S.sessions[date];
+  if(logged ? JSON.stringify(s)===JSON.stringify(logged) : !Object.keys(s.items).length) delete S.drafts[date];
+}
+const shown = date => S.drafts[date] || S.sessions[date];
+const setCount = s => s ? Object.values(s.items).reduce((n,it)=>n+it.sets.length,0) : 0;
+const hasSets = s => setCount(s)>0;
+function metStandard(fam, it){
+  const L = FAM[fam].levels[it.level]; if(!L) return false;
+  return it.sets.filter(x=>Number(x.v)>=L.r).length >= L.s;
+}
+function sessionsFor(fam){
+  return Object.keys(S.sessions).sort().map(d=>({date:d,it:S.sessions[d].items[fam]})).filter(x=>x.it && x.it.sets.length);
+}
+function lastBefore(fam, date){
+  const list = sessionsFor(fam).filter(x=>x.date<date);
+  return list.length ? list[list.length-1] : null;
+}
+function readyToLevel(fam){
+  const cur = S.profile.current[fam];
+  return sessionsFor(fam).some(x=>x.it.level===cur && metStandard(fam,x.it)) && cur < FAM[fam].levels.length-1;
+}
+function isRestDay(date){ return (S.profile.restDays||[]).includes(parse(date).getDay()); }
+function streaks(){
+  const done = new Set(Object.keys(S.sessions).filter(d=>hasSets(S.sessions[d])));
+  const all = [...done].sort();
+  let current=0, longest=0;
+  if(all.length){
+    let d = today();
+    if(!done.has(d)) d = addDays(d,-1);
+    for(let i=0;i<4000 && d>=all[0];i++){
+      if(done.has(d)) current++; else if(!isRestDay(d)) break;
+      d = addDays(d,-1);
+    }
+    let run=0, d2=all[0]; const end=today();
+    for(let i=0;i<4000 && d2<=end;i++){
+      if(done.has(d2)){ run++; longest=Math.max(longest,run); } else if(!isRestDay(d2) && d2!==end) run=0;
+      d2=addDays(d2,1);
+    }
+  }
+  return {current,longest,total:done.size,done};
+}
+const fmtSets = (it,fam) => it.sets.map(x=>x.v).join(" × ") + (FAM[fam].unit==="s"?" s":"");
+const stdText = L => `${L.s} × ${L.r}`;
+const unitWord = fam => FAM[fam].unit==="s" ? "seconds" : "reps";
+
+/* ---------- Views ---------- */
+function render(){
+  const app=document.getElementById("app");
+  document.querySelectorAll("nav.tabs button").forEach(b=>b.setAttribute("aria-current", b.dataset.v===S.view?"page":"false"));
+  const top = `<div class="top"><span class="brand">Hybrid Log</span><button class="sync" id="sync" data-action="sync-tap"></button></div>`;
+  const views = {today:vToday,calendar:vCalendar,progress:vProgress,ladders:vLadders};
+  app.innerHTML = top + views[S.view]();
+  setSync();
+  if(S.view==="progress") bindChart();
+}
+
+function vToday(){
+  const date=S.date, dow=parse(date).getDay();
+  const planned = SCHEDULE[dow];
+  const s = shown(date);
+  const logged = s ? Object.keys(s.items) : [];
+  const fams = [...new Set([...planned, ...logged])].sort((a,b)=>FAMILIES.findIndex(f=>f.id===a)-FAMILIES.findIndex(f=>f.id===b));
+  const isToday = date===today();
+  const title = isToday ? "Today" : nice(date);
+  const plan = planned.length ? planned.map(f=>FAM[f].name).join(" and ") : "Rest and stretching";
+  let html = `<div class="datebar">
+    <button class="arrow" data-action="day" data-d="-1" aria-label="Previous day">‹</button>
+    <div class="grow"><h1>${title}</h1><p class="sub">${isToday?nice(date)+" · ":""}${plan}</p></div>
+    ${isToday?"":`<button class="pill" data-action="goto-today">Today</button>`}
+    <button class="arrow" data-action="day" data-d="1" aria-label="Next day" ${date>=today()?"disabled style='opacity:.35'":""}>›</button>
+  </div>`;
+  if(!fams.length) html += `<div class="card rest-day"><h2>Rest day</h2><p class="sub">The Hybrid Routine keeps this day for rest and stretching. Doing something anyway? Add it below.</p></div>`;
+  html += fams.map(f=>card(f,date)).join("");
+  const others = FAMILIES.filter(f=>!fams.includes(f.id));
+  html += logBar(date);
+  if(others.length) html += `<div class="add-row"><select data-action="add-fam" aria-label="Add another exercise"><option value="">Add another exercise…</option>${others.map(f=>`<option value="${f.id}">${f.name}</option>`).join("")}</select></div>`;
+  return html;
+}
+
+function logBar(date){
+  const draft=S.drafts[date], logged=S.sessions[date];
+  if(!draft){
+    return logged ? `<p class="logged">Logged${Store.pending.has(date)?", waiting to upload to GitHub":GH.cfg?" and saved to GitHub":""}. Edit anything above to change it.</p>` : "";
+  }
+  const n=setCount(draft), fams=Object.values(draft.items).filter(it=>it.sets.length).length;
+  const deleting = logged && !n;
+  const label = deleting ? "Delete this session" : logged ? "Save changes" : "Log session";
+  const detail = deleting ? "Removes this day from your log." : `${n} set${n===1?"":"s"} across ${fams} exercise${fams===1?"":"s"}. Kept on this device until you log it.`;
+  return `<div class="logbar">
+    <div><b>${logged?"Unsaved changes":"Session in progress"}</b><p class="hint" style="margin:2px 0 0">${detail}</p></div>
+    <div class="toggles">
+      <button class="btn ghost" data-action="discard">${logged?"Discard changes":"Discard"}</button>
+      <button class="btn ${deleting?"":"done"}" data-action="log-session" ${!n&&!logged?"disabled":""}>${label}</button>
+    </div></div>`;
+}
+function card(fam,date){
+  const F=FAM[fam];
+  const it = (shown(date)&&shown(date).items[fam]) || {level:S.profile.current[fam]||0,sets:[],note:""};
+  const L = F.levels[it.level];
+  const cur = S.profile.current[fam];
+  const last = lastBefore(fam,date);
+  const comp = S.composer[fam] || (S.composer[fam]={f:1});
+  const nextIdx = it.sets.length;
+  const suggest = last && last.it.level===it.level && last.it.sets[nextIdx] ? last.it.sets[nextIdx].v : (it.sets.length? it.sets[it.sets.length-1].v : L.r);
+  const val = comp.v ?? suggest;
+  const rungs = F.levels.map((_,i)=>`<span class="${i<it.level?"past":i===it.level?"now":""}"></span>`).join("");
+  let lu = "";
+  if(it.level===cur && metStandard(fam,it)){
+    const nx = F.levels[cur+1];
+    lu = nx ? `<div class="levelup"><p>Standard hit on ${esc(L.n)}. Next up: <b>${esc(nx.n)}</b> (${stdText(nx)}).</p><button class="btn done" data-action="levelup" data-fam="${fam}">Move up</button></div>`
+            : `<div class="levelup"><p>Standard hit on the last step of the ladder. Keep it sharp.</p></div>`;
+  } else if(it.level<cur){
+    lu = `<p class="hint" style="margin-top:8px">Logging an easier step than your current one (${esc(F.levels[cur].n)}).</p>`;
+  }
+  const sets = it.sets.map((x,i)=>`<li class="set ${Number(x.v)>=L.r?"hit":""}">
+      <span class="n">Set ${i+1}</span>
+      <input type="number" inputmode="numeric" min="0" value="${esc(x.v)}" data-action="set-v" data-fam="${fam}" data-i="${i}" aria-label="Set ${i+1} ${unitWord(fam)}">
+      <span class="feel">${FEELS.map((n,k)=>`<button aria-pressed="${x.f===k}" data-action="set-f" data-fam="${fam}" data-i="${i}" data-k="${k}">${n}</button>`).join("")}</span>
+      <button class="x" data-action="del-set" data-fam="${fam}" data-i="${i}" aria-label="Delete set ${i+1}">×</button>
+    </li>`).join("");
+  return `<section class="card" data-fam="${fam}">
+    <div class="card-head"><div><h2>${F.name}</h2><p class="sub" style="font-size:.85rem">Step ${it.level+1} of ${F.levels.length}</p></div>
+    ${!it.sets.length && !it.note && !SCHEDULE[parse(date).getDay()].includes(fam) ? `<button class="pill" data-action="rm-fam" data-fam="${fam}">Remove</button>`:""}</div>
+    <div class="ladder" aria-hidden="true">${rungs}</div>
+    <div class="prog">
+      <select data-action="level" data-fam="${fam}" aria-label="Progression">${F.levels.map((l,i)=>`<option value="${i}" ${i===it.level?"selected":""}>${i+1}. ${esc(l.n)}</option>`).join("")}</select>
+      <span class="std">Standard ${stdText(L)}${F.unit==="s"?" s":""} <small>${L.b?"each side":""}</small></span>
+    </div>
+    ${lu}
+    ${sets?`<ol class="sets">${sets}</ol>`:""}
+    <div class="composer">
+      <div class="num">
+        <button class="step" data-action="step" data-fam="${fam}" data-d="-1" aria-label="Less">−</button>
+        <input type="number" inputmode="numeric" min="0" value="${esc(val)}" data-action="comp-v" data-fam="${fam}" aria-label="Next set ${unitWord(fam)}">
+        <button class="step" data-action="step" data-fam="${fam}" data-d="1" aria-label="More">+</button>
+      </div>
+      <span class="feel">${FEELS.map((n,k)=>`<button aria-pressed="${comp.f===k}" data-action="comp-f" data-fam="${fam}" data-k="${k}">${n}</button>`).join("")}</span>
+      <button class="btn accent" data-action="log" data-fam="${fam}">Log set ${nextIdx+1}</button>
+    </div>
+    ${L.b?`<p class="hint" style="margin:6px 0 0">Both sides: log your weaker side.</p>`:""}
+    <textarea placeholder="Notes: form, pain, tempo, what to change next time" data-action="note" data-fam="${fam}" rows="1">${esc(it.note)}</textarea>
+    ${last?`<p class="last">Last time (${nice(last.date)}${last.it.level!==it.level?", "+esc(F.levels[last.it.level].n):""}): ${fmtSets(last.it,fam)}</p>`:""}
+  </section>`;
+}
+
+function vCalendar(){
+  const st = streaks();
+  const [y,m] = S.calMonth.split("-").map(Number);
+  const first = new Date(y,m-1,1);
+  const days = new Date(y,m,0).getDate();
+  const lead = (first.getDay()+6)%7; // Monday-first
+  const t = today();
+  let cells = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(d=>`<div class="dow">${d}</div>`).join("");
+  for(let i=0;i<lead;i++) cells += `<div class="blank"></div>`;
+  let monthCount=0;
+  for(let d=1; d<=days; d++){
+    const ds = `${y}-${pad(m)}-${pad(d)}`;
+    const s = S.sessions[ds];
+    const n = s ? Object.values(s.items).filter(it=>it.sets.length).length : 0;
+    if(n) monthCount++;
+    const cls = [S.drafts[ds]?"draft":"", n>=2?"done2":n?"done":"", !n && isRestDay(ds)?"rest":"", ds===t?"today":"", ds>t?"future":""].join(" ");
+    const label = `${nice(ds)}${n?`, ${n} exercise${n>1?"s":""} logged`:""}`;
+    cells += `<button class="${cls}" data-action="open-day" data-d="${ds}" ${ds>t?"disabled":""} aria-label="${label}">${d}</button>`;
+  }
+  const prevM = (()=>{const d=new Date(y,m-2,1);return `${d.getFullYear()}-${pad(d.getMonth()+1)}`})();
+  const nextM = (()=>{const d=new Date(y,m,1);return `${d.getFullYear()}-${pad(d.getMonth()+1)}`})();
+  return `<h1>Calendar</h1>
+  <div class="stats">
+    <div class="stat big"><b>${st.current}</b><span>day streak${st.current===1?"":""}</span></div>
+    <div class="stat"><b>${st.longest}</b><span>longest streak</span></div>
+    <div class="stat"><b>${st.total}</b><span>workouts</span></div>
+  </div>
+  <div class="card">
+    <div class="cal-head">
+      <button class="arrow pill" data-action="month" data-m="${prevM}" aria-label="Previous month">‹</button>
+      <h2>${MONTHS[m-1]} ${y}</h2>
+      <button class="arrow pill" data-action="month" data-m="${nextM}" aria-label="Next month" ${nextM>t.slice(0,7)?"disabled style='opacity:.35'":""}>›</button>
+    </div>
+    <div class="cal">${cells}</div>
+    <div class="legend"><span><i style="background:var(--done)"></i>Workout</span><span><i style="background:var(--done);box-shadow:inset 0 0 0 2px var(--accent)"></i>2+ exercises</span><span><i style="border:2px dashed var(--accent)"></i>Not logged yet</span><span><i style="background:repeating-linear-gradient(135deg,var(--surface) 0 3px,var(--line) 3px 5px)"></i>Rest day (keeps the streak)</span></div>
+    <p class="hint" style="margin:10px 0 0">${monthCount} workout day${monthCount===1?"":"s"} this month. Tap a day to see or edit it.</p>
+  </div>`;
+}
+
+function vProgress(){
+  const fam=S.progFam, F=FAM[fam];
+  const chips = FAMILIES.map(f=>`<button aria-pressed="${f.id===fam}" data-action="prog-fam" data-fam="${f.id}">${f.name}</button>`).join("");
+  const list = sessionsFor(fam);
+  const cur = S.profile.current[fam], L=F.levels[cur];
+  let html = `<h1>Progress</h1><div class="chips" role="group" aria-label="Exercise">${chips}</div>`;
+  const atCur = list.filter(x=>x.it.level===cur);
+  const bestSet = atCur.reduce((m,x)=>Math.max(m,...x.it.sets.map(s=>Number(s.v)||0)),0);
+  const bestHits = atCur.reduce((m,x)=>Math.max(m,x.it.sets.filter(s=>Number(s.v)>=L.r).length),0);
+  // progress toward standard = best session's top-N sets total vs standard volume
+  const bestVol = atCur.reduce((m,x)=>{const top=x.it.sets.map(s=>Math.min(Number(s.v)||0,L.r)).sort((a,b)=>b-a).slice(0,L.s);return Math.max(m,top.reduce((a,b)=>a+b,0));},0);
+  const pct = Math.round(100*bestVol/(L.s*L.r));
+  html += `<div class="card">
+    <h2>${esc(L.n)} ${readyToLevel(fam)?`<span class="badge">Ready to move up</span>`:""}</h2>
+    <p class="sub">Step ${cur+1} of ${F.levels.length} · Standard ${stdText(L)}${F.unit==="s"?" s":""}${L.b?" each side":""}</p>
+    <div class="meter" aria-label="${pct}% of the standard"><i style="width:${pct}%"></i></div>
+    <p class="hint" style="margin:0">${atCur.length?`${pct}% of the standard in your best session · best set ${bestSet} · ${bestHits} of ${L.s} sets at standard`:`No sessions at this step yet.`}</p>
+  </div>`;
+  if(!list.length){ return html + `<div class="empty">Log a ${F.name.toLowerCase()} session and your chart will start here.</div>`; }
+  html += `<div class="card"><h2 style="font-size:1.2rem">Best set per session</h2><p class="hint" style="margin:2px 0 8px">Dashed line is the standard for the step you were on. Colour changes mark a new step.</p><div class="chart-wrap">${chartSVG(fam,list)}</div><p class="hint" id="chartTip" style="min-height:1.4em;margin:6px 0 0"></p></div>`;
+  html += `<div class="card"><h2 style="font-size:1.2rem">History</h2><ul class="hist">${list.slice().reverse().slice(0,40).map(x=>`<li>
+      <span class="d">${nice(x.date)}</span>
+      <div><div class="reps">${fmtSets(x.it,fam)} ${metStandard(fam,x.it)?`<span class="badge">standard</span>`:""}</div>
+      <div class="hint">${esc(F.levels[x.it.level].n)} · ${x.it.sets.map(s=>FEELS[s.f]||"").join(", ")}</div>
+      ${x.it.note?`<div class="note">${esc(x.it.note)}</div>`:""}</div></li>`).join("")}</ul></div>`;
+  return html;
+}
+
+let chartPts=[];
+function chartSVG(fam,list){
+  const F=FAM[fam], W=600, H=240, pl=34, pr=12, pt=12, pb=28;
+  const t0=parse(list[0].date).getTime(), t1=parse(list[list.length-1].date).getTime();
+  const span=Math.max(t1-t0, 86400000*6);
+  const pts=list.map(x=>({date:x.date,level:x.it.level,v:Math.max(...x.it.sets.map(s=>Number(s.v)||0)),std:F.levels[x.it.level].r,it:x.it}));
+  const ymax=Math.max(...pts.map(p=>Math.max(p.v,p.std)))*1.1||10;
+  const X=d=>pl+(parse(d).getTime()-t0)/span*(W-pl-pr);
+  const Y=v=>pt+(1-v/ymax)*(H-pt-pb);
+  const palette=["var(--done)","var(--accent)"];
+  let g="";
+  // grid
+  const step = ymax>60?20:ymax>30?10:5;
+  for(let v=0; v<=ymax; v+=step) g+=`<line x1="${pl}" x2="${W-pr}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${pl-6}" y="${Y(v)+4}" text-anchor="end">${v}</text>`;
+  // standard step line per level segment
+  let segs=[]; pts.forEach((p,i)=>{ if(!segs.length||segs[segs.length-1].level!==p.level) segs.push({level:p.level,pts:[]}); segs[segs.length-1].pts.push(p); });
+  segs.forEach((s,si)=>{
+    const a=X(s.pts[0].date), b= si<segs.length-1 ? X(segs[si+1].pts[0].date) : Math.max(X(s.pts[s.pts.length-1].date), a+8);
+    g+=`<line x1="${a}" x2="${b}" y1="${Y(s.pts[0].std)}" y2="${Y(s.pts[0].std)}" stroke="${palette[si%2]}" stroke-dasharray="4 4" opacity=".7"/>`;
+    if(si>0) g+=`<line x1="${a}" x2="${a}" y1="${pt}" y2="${H-pb}" stroke="var(--line)"/><text x="${a+4}" y="${pt+10}">${esc(FAM[fam].levels[s.level].n.replace(/ (Pushups|Pullups|Squats|Raises|Bridges|Twists)$/,""))}</text>`;
+    g+=`<polyline fill="none" stroke="${palette[si%2]}" stroke-width="2.5" stroke-linejoin="round" points="${s.pts.map(p=>`${X(p.date)},${Y(p.v)}`).join(" ")}"/>`;
+    s.pts.forEach(p=>{ g+=`<circle cx="${X(p.date)}" cy="${Y(p.v)}" r="4.5" fill="var(--surface)" stroke="${palette[si%2]}" stroke-width="2.5"/>`; });
+  });
+  g+=`<text x="${pl}" y="${H-8}">${nice(list[0].date)}</text><text x="${W-pr}" y="${H-8}" text-anchor="end">${nice(list[list.length-1].date)}</text>`;
+  chartPts = pts.map(p=>({...p,x:X(p.date)}));
+  return `<svg class="chart" id="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Best set per session for ${F.name}">${g}<line id="chartCursor" x1="0" x2="0" y1="${pt}" y2="${H-pb}" stroke="var(--ink)" opacity="0"/></svg>`;
+}
+function bindChart(){
+  const svg=document.getElementById("chart"); if(!svg) return;
+  const tip=document.getElementById("chartTip"), cursor=document.getElementById("chartCursor");
+  const pick=e=>{
+    const r=svg.getBoundingClientRect(); const x=(e.clientX-r.left)/r.width*600;
+    let best=null,dist=1e9; chartPts.forEach(p=>{const d=Math.abs(p.x-x); if(d<dist){dist=d;best=p;}});
+    if(!best) return;
+    cursor.setAttribute("x1",best.x); cursor.setAttribute("x2",best.x); cursor.setAttribute("opacity",".35");
+    tip.textContent=`${nice(best.date)} · ${FAM[S.progFam].levels[best.level].n} · ${fmtSets(best.it,S.progFam)}`;
+  };
+  svg.addEventListener("pointermove",pick); svg.addEventListener("pointerdown",pick);
+}
+
+function ghSection(){
+  if(GH.cfg){
+    const c=GH.cfg;
+    return `<p style="margin:0 0 8px">Connected to <b>${esc(c.owner)}/${esc(c.repo)}</b>, file <code>${esc(c.path)}</code> on <code>${esc(c.branch)}</code>.</p>
+      ${Store.msg?`<p class="hint" style="color:var(--warn)">${esc(Store.msg)}</p>`:""}
+      <div class="toggles"><button class="btn ghost" data-action="sync-now">Sync now</button><button class="btn ghost" data-action="gh-token">Replace token</button><button class="btn ghost" data-action="gh-off">Disconnect</button></div>
+      <p class="hint">Each logged session is one commit. Step and settings changes are saved with your next logged session, or right away with Sync now. The token is stored only in this browser.</p>`;
+  }
+  return `<p class="hint" style="margin-top:0">Saves your log as a CSV file in a GitHub repository, so every device you connect shares it.</p>
+    <div class="row"><input id="ghOwner" placeholder="GitHub username" autocomplete="username" autocapitalize="off" spellcheck="false"><input id="ghRepo" placeholder="Repository, e.g. hybrid-log-data" autocapitalize="off" spellcheck="false"></div>
+    <div class="row"><input id="ghBranch" placeholder="Branch" value="main" autocapitalize="off" spellcheck="false"><input id="ghPath" placeholder="File" value="workouts.csv" autocapitalize="off" spellcheck="false"></div>
+    <input id="ghToken" type="password" placeholder="Fine-grained token (github_pat_…)" autocomplete="off" spellcheck="false">
+    <button class="btn accent" data-action="gh-connect">Connect</button>`;
+}
+function vLadders(){
+  let html=`<h1>Ladders</h1><p class="sub" style="margin-bottom:14px">Your current step in each progression. Tap “Start here” to change it.</p>`;
+  html += FAMILIES.map(F=>{
+    const cur=S.profile.current[F.id];
+    return `<div class="card"><h2>${F.name} ${readyToLevel(F.id)?`<span class="badge">Ready to move up</span>`:""}</h2>
+      <ol class="lv">${F.levels.map((L,i)=>`<li class="${i<cur?"past":i===cur?"now":""}"><span class="dot"></span>
+        <span class="nm">${esc(L.n)}<br><span class="sd">${stdText(L)}${F.unit==="s"?" s":""}${L.b?" each side":""}</span></span>
+        ${i===cur?`<span class="hint">Current</span>`:`<button data-action="set-cur" data-fam="${F.id}" data-i="${i}">Start here</button>`}</li>`).join("")}</ol>
+      <p class="hint" style="margin:10px 0 0"><a href="${F.page}" target="_blank" rel="noopener">Form tutorials on hybridcalisthenics.com</a></p></div>`;
+  }).join("");
+  const rest=S.profile.restSec;
+  html += `<div class="card"><h2>Settings</h2>
+    <div class="field"><label>Rest timer between sets</label><div class="toggles">${[60,90,120,150,180].map(s=>`<button aria-pressed="${rest===s}" data-action="rest" data-s="${s}">${s<120?s+"s":(s/60)+" min"}</button>`).join("")}</div>
+    <p class="hint">Hampton suggests 2 to 3 minutes between sets.</p></div>
+    <div class="field"><label>Rest days (don’t break your streak)</label><div class="toggles">${[1,2,3,4,5,6,0].map(d=>`<button aria-pressed="${S.profile.restDays.includes(d)}" data-action="restday" data-d="${d}">${DOW[d]}</button>`).join("")}</div></div>
+    <div class="field gh"><label>Sync with GitHub</label>${ghSection()}</div>
+    <div class="field"><label>Your log as a spreadsheet</label>
+      <div class="toggles"><button class="btn ghost" data-action="export">Download CSV</button><button class="btn ghost" data-action="import">Import CSV</button></div>
+      <p class="hint">Importing replaces the log on this device${GH.cfg?" and in GitHub":""}.</p></div>
+  </div>`;
+  return html;
+}
+
+/* ---------- Rest timer ---------- */
+let timer={end:0,total:0,iv:null,beeped:false}, audio=null;
+function startRest(){
+  try{ audio = audio || new (window.AudioContext||window.webkitAudioContext)(); audio.resume && audio.resume(); }catch(e){}
+  timer.total=S.profile.restSec*1000; timer.end=Date.now()+timer.total; timer.beeped=false;
+  document.getElementById("timer").classList.add("on"); document.getElementById("timer").classList.remove("over");
+  clearInterval(timer.iv); timer.iv=setInterval(tick,250); tick();
+}
+function tick(){
+  const left=timer.end-Date.now(), el=document.getElementById("timer");
+  const a=Math.abs(left), m=Math.floor(a/60000), s=Math.floor(a%60000/1000);
+  document.getElementById("timerT").textContent=(left<0?"+":"")+`${m}:${pad(s)}`;
+  document.getElementById("timerBar").style.width=Math.max(0,Math.min(100,100*(1-left/timer.total)))+"%";
+  if(left<=0 && !timer.beeped){
+    timer.beeped=true; el.classList.add("over"); document.getElementById("timerL").textContent="Time for your next set";
+    try{ navigator.vibrate && navigator.vibrate([200,100,200]); }catch(e){}
+    try{ if(audio){ [0,0.25].forEach(t=>{const o=audio.createOscillator(),g=audio.createGain();o.frequency.value=880;g.gain.value=.12;o.connect(g);g.connect(audio.destination);o.start(audio.currentTime+t);o.stop(audio.currentTime+t+.15);}); } }catch(e){}
+  } else if(left>0){ document.getElementById("timerL").textContent="Rest before next set"; }
+  if(left<-120000) stopRest();
+}
+function stopRest(){ clearInterval(timer.iv); document.getElementById("timer").classList.remove("on"); }
+
+function toast(msg){ const t=document.getElementById("toast"); t.textContent=msg; t.style.display="block"; clearTimeout(t._h); t._h=setTimeout(()=>t.style.display="none",2600); }
+
+/* ---------- Events ---------- */
+function refreshLogBar(){
+  if(S.view!=="today") return;
+  const html=logBar(S.date), el=document.querySelector("#app .logbar, #app .logged");
+  const make=()=>{ const t=document.createElement("div"); t.innerHTML=html; return t.firstElementChild; };
+  if(el){ html ? el.replaceWith(make()) : el.remove(); }
+  else if(html){ const add=document.querySelector("#app .add-row"); add ? add.before(make()) : document.getElementById("app").appendChild(make()); }
+}
+function rerenderCard(fam){
+  const el=document.querySelector(`section.card[data-fam="${fam}"]`);
+  if(!el) return render();
+  const tmp=document.createElement("div"); tmp.innerHTML=card(fam,S.date); el.replaceWith(tmp.firstElementChild);
+}
+document.addEventListener("click", async e=>{
+  const b=e.target.closest("[data-action]"); if(!b || b.tagName==="SELECT" || b.tagName==="INPUT" || b.tagName==="TEXTAREA") return;
+  const a=b.dataset.action, fam=b.dataset.fam;
+  switch(a){
+    case "view": S.view=b.dataset.v; render(); window.scrollTo(0,0); break;
+    case "day": { const d=addDays(S.date,Number(b.dataset.d)); if(d<=today()){ S.date=d; S.composer={}; render(); } break; }
+    case "goto-today": S.date=today(); S.composer={}; render(); break;
+    case "open-day": S.date=b.dataset.d; S.composer={}; S.view="today"; render(); window.scrollTo(0,0); break;
+    case "month": S.calMonth=b.dataset.m; render(); break;
+    case "prog-fam": S.progFam=fam; render(); break;
+    case "step": { const c=S.composer[fam]||(S.composer[fam]={f:1}); const inp=document.querySelector(`input[data-action="comp-v"][data-fam="${fam}"]`); const inc=FAM[fam].unit==="s"?5:1; c.v=Math.max(0,(Number(inp.value)||0)+Number(b.dataset.d)*inc); inp.value=c.v; break; }
+    case "comp-f": { const c=S.composer[fam]||(S.composer[fam]={f:1}); c.f=Number(b.dataset.k); rerenderCard(fam); break; }
+    case "log": {
+      const inp=document.querySelector(`input[data-action="comp-v"][data-fam="${fam}"]`);
+      const v=Number(inp.value); if(!(v>0)){ inp.focus(); toast(`Enter how many ${unitWord(fam)} you did.`); return; }
+      const it=ensureItem(S.date,fam); const c=S.composer[fam]||{f:1};
+      it.sets.push({v,f:c.f??1}); S.composer[fam]={f:c.f??1};
+      Store.saveDraft(); rerenderCard(fam); refreshLogBar();
+      if(S.date===today()) startRest();
+      break;
+    }
+    case "set-f": { const it=ensureItem(S.date,fam); it.sets[+b.dataset.i].f=Number(b.dataset.k); cleanSession(S.date); Store.saveDraft(); rerenderCard(fam); refreshLogBar(); break; }
+    case "del-set": { const it=ensureItem(S.date,fam); it.sets.splice(+b.dataset.i,1); cleanSession(S.date); Store.saveDraft(); rerenderCard(fam); refreshLogBar(); break; }
+    case "discard": {
+      const logged=S.sessions[S.date];
+      if(!confirm(logged?"Discard your changes to this session?":"Discard this session? The sets you entered will be deleted.")) return;
+      delete S.drafts[S.date]; S.composer={}; Store.saveDraft(); stopRest(); render(); break;
+    }
+    case "log-session": {
+      const date=S.date; if(!S.drafts[date]) return;
+      cleanSession(date);
+      const draft=S.drafts[date];
+      if(draft){ if(setCount(draft)) S.sessions[date]=draft; else delete S.sessions[date]; delete S.drafts[date]; }
+      stopRest(); S.composer={};
+      Store.logSession(date);
+      render(); window.scrollTo(0,0);
+      toast(GH.cfg ? "Session logged. Saving to GitHub…" : "Session logged on this device.");
+      break;
+    }
+    case "rm-fam": { const s=getDraft(S.date); delete s.items[fam]; cleanSession(S.date); Store.saveDraft(); render(); break; }
+    case "levelup": { const n=S.profile.current[fam]+1; if(n<FAM[fam].levels.length){ S.profile.current[fam]=n; Store.saveProfile(); toast(`Moved up to ${FAM[fam].levels[n].n}. Starts next session.`); rerenderCard(fam);} break; }
+    case "set-cur": S.profile.current[fam]=Number(b.dataset.i); Store.saveProfile(); render(); break;
+    case "rest": S.profile.restSec=Number(b.dataset.s); Store.saveProfile(); render(); break;
+    case "restday": { const d=Number(b.dataset.d); const r=S.profile.restDays; S.profile.restDays = r.includes(d)? r.filter(x=>x!==d) : [...r,d]; Store.saveProfile(); render(); break; }
+    case "timer-add": timer.end+=30000; timer.total+=30000; timer.beeped=false; document.getElementById("timer").classList.remove("over"); tick(); break;
+    case "timer-skip": stopRest(); break;
+    case "export": {
+      const url=URL.createObjectURL(new Blob([toCSV(S.sessions)],{type:"text/csv"}));
+      const link=document.createElement("a"); link.href=url; link.download=`hybrid-log-${today()}.csv`;
+      document.body.appendChild(link); link.click(); link.remove(); setTimeout(()=>URL.revokeObjectURL(url),1000);
+      toast("CSV downloaded."); break;
+    }
+    case "sync-tap": if(Store.msg) toast(Store.msg); else if(GH.cfg) Store.pull(); else { S.view="ladders"; render(); setTimeout(()=>document.querySelector(".gh")?.scrollIntoView({block:"center"}),50); } break;
+    case "sync-now": Store.msg=""; Store.pull().then(()=>Store.flush()); break;
+    case "gh-off": if(confirm("Stop syncing this device with GitHub?")){ GH.saveCfg(null); Store.pending.clear(); Store.profilePending=false; Store.writeLocal(); setStatus("local"); render(); } break;
+    case "gh-token": { const t=prompt("Paste the new fine-grained token"); if(t && t.trim()){ GH.saveCfg({...GH.cfg,token:t.trim()}); Store.msg=""; Store.pull(); render(); } break; }
+    case "gh-connect": {
+      const v=id=>document.getElementById(id).value.trim();
+      const cfg={owner:v("ghOwner"),repo:v("ghRepo").replace(/\.git$/,""),branch:v("ghBranch")||"main",path:(v("ghPath")||"workouts.csv").replace(/^\/+/,""),token:v("ghToken")};
+      if(!cfg.owner||!cfg.repo||!cfg.token){ toast("Fill in your username, the repository and the token."); return; }
+      b.disabled=true; b.textContent="Checking…";
+      GH.cfg=cfg;
+      try{
+        const r=await GH.api("GET",`/repos/${cfg.owner}/${cfg.repo}`);
+        if(r.status===401) throw new Error("GitHub rejected the token. Check you copied all of it.");
+        if(!r.ok) throw new Error(`Can’t find ${cfg.owner}/${cfg.repo}, or the token doesn’t include it.`);
+        const repo=await r.json();
+        GH.saveCfg(cfg);
+        Object.keys(S.sessions).forEach(d=>Store.pending.add(d));
+        if(repo.private===false) toast("Heads up: this repository is public, so anyone can read your log.");
+        render(); await Store.pull(); render();
+      }catch(err){ GH.cfg=null; toast(err.message||"Couldn’t reach GitHub."); b.disabled=false; b.textContent="Connect"; }
+      break;
+    }
+    case "import": document.getElementById("importFile").click(); break;
+  }
+});
+document.addEventListener("input", e=>{
+  const el=e.target, a=el.dataset.action, fam=el.dataset.fam; if(!a) return;
+  if(a==="comp-v"){ (S.composer[fam]||(S.composer[fam]={f:1})).v=el.value===""?"":Number(el.value); }
+  if(a==="set-v"){ const it=ensureItem(S.date,fam); it.sets[+el.dataset.i].v=Number(el.value)||0; el.closest(".set").classList.toggle("hit", it.sets[+el.dataset.i].v>=FAM[fam].levels[it.level].r); cleanSession(S.date); Store.saveDraft(); refreshLogBar(); }
+  if(a==="note"){ const it=ensureItem(S.date,fam); it.note=el.value; cleanSession(S.date); Store.saveDraft(); refreshLogBar(); }
+});
+document.addEventListener("change", e=>{
+  const el=e.target, a=el.dataset.action, fam=el.dataset.fam; if(!a) return;
+  if(a==="level"){ const it=ensureItem(S.date,fam); it.level=Number(el.value); S.composer[fam]={f:1}; cleanSession(S.date); Store.saveDraft(); rerenderCard(fam); refreshLogBar(); }
+  if(a==="add-fam" && el.value){ ensureItem(S.date,el.value); render(); }
+  if(a==="set-v"){ rerenderCard(fam); }
+});
+// keep "today" correct if the app stays open past midnight
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden && S.view==="today" && S.date<today() && !S.drafts[S.date]){ S.date=today(); render(); } });
+
+document.getElementById("importFile").addEventListener("change", async e=>{
+  const f=e.target.files[0]; e.target.value=""; if(!f) return;
+  try{
+    const text=await f.text(); let sessions, profile=null;
+    if(/^\s*\{/.test(text)){ const j=JSON.parse(text); sessions=j.sessions; profile=j.profile; if(typeof sessions!=="object") throw 0; }
+    else sessions=fromCSV(text);
+    const n=Object.keys(sessions).length;
+    if(!confirm(`Replace your log with this file (${n} day${n===1?"":"s"} of workouts)?`)) return;
+    S.sessions=sessions; if(profile){ Store.loadProfile(profile); Store.saveProfile(); }
+    Object.keys(sessions).forEach(d=>Store.pending.add(d));
+    Store.rev++; Store.writeLocal(); Store.flush(); render(); toast("Log imported.");
+  }catch(err){ toast("That file isn’t a Hybrid Log CSV."); }
+});
+Store.init();
+</script>
+</body>
+</html>
